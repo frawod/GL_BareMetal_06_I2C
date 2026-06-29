@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "pca9685.h"
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -300,7 +301,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART3) {
 
         switch (rx_byte) {
-            // put stuff here whenever PCA9685 starts working
+        	case 'f': case 'F':
+				// Test setting frequency to 1000 Hz
+				PCA9685_SetFrequency(1000.0f);
+				UART_Print("\r\n[I2C] Sent SetFrequency(1000) command.\r\n");
+				break;
 
             default:
             	break;
