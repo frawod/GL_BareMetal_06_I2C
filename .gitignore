@@ -1,0 +1,26 @@
+# Build artifacts
+Debug/
+Release/
+*.o
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.su
+
+# Eclipse/CubeIDE specific
+.metadata/
+*.launch
+# .launch excluded because it has hard-coded paths anyway
+
+# CubeMX backups and logs
+*.bak
+*.log
+
+# Windows specific
+Thumbs.db
+desktop.ini
+
+.vscode/
+.vs/
