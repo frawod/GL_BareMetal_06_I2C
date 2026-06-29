@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "pca9685.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +47,8 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+
+uint8_t rx_byte;
 
 /* USER CODE END PV */
 
@@ -94,6 +98,10 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
+
+  PCA9685_Init(&hi2c1);
 
   /* USER CODE END 2 */
 
@@ -282,6 +290,25 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// effectively just copied over from the UART assignment
+void UART_Print(char* message) {
+    HAL_UART_Transmit(&huart3, (uint8_t*)message, strlen(message), HAL_MAX_DELAY);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART3) {
+
+        switch (rx_byte) {
+            // put stuff here whenever PCA9685 starts working
+
+            default:
+            	break;
+        }
+
+        HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
+    }
+}
 
 /* USER CODE END 4 */
 
