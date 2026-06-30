@@ -24,6 +24,7 @@
 
 #include "pca9685.h"
 #include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -66,6 +67,15 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN 0 */
 
 volatile uint8_t key_pressed = 0;
+
+uint8_t led_duty[16] = {0}; // 1 value for each LED
+
+uint8_t selected_led = 255; // the actual LED number for each LED, 255 for ALL
+
+float current_frequency = 1000.0f;
+
+uint8_t duty_step = 10;
+float freq_step = 100.0f;
 
 void UART_Print(char* message); // just declared, because I wanna keep the definitions organised and lower
 // but it gets called in the while loop, so it needs to be 'known' earlier
@@ -117,60 +127,82 @@ int main(void)
   {
 	  if (key_pressed == 0) continue;
 
-	  // this is kind of like a Command Queue pattern, just without the queue part
-	  switch (key_pressed) {
-		case 'f': case 'F':
-			// Test setting frequency to 1000 Hz
-			PCA9685_SetFrequency(1000.0f);
-			UART_Print("\r\n[I2C] Sent SetFrequency(1000) command.\r\n");
-			break;
-
-		case '1':
-			PCA9685_SetDutyCycle(0, 10); // Channel 0, 10% brightness
-			UART_Print("\r\n[LED 0] Duty Cycle: 10%\r\n");
-			break;
-
-		case '2':
-			PCA9685_SetDutyCycle(0, 50); // Channel 0, 50% brightness
-			UART_Print("\r\n[LED 0] Duty Cycle: 50%\r\n");
-			break;
-
-		case '3':
-			PCA9685_SetDutyCycle(0, 100); // Channel 0, 100% brightness
-			UART_Print("\r\n[LED 0] Duty Cycle: 100%\r\n");
-			break;
-
-		case '0':
-			PCA9685_SetDutyCycle(0, 0);   // Channel 0, OFF
-			UART_Print("\r\n[LED 0] Duty Cycle: 0%\r\n");
-			break;
-
-		case 'e': case 'E':
-			PCA9685_EnableOutputs(1);     // Pull PB7 LOW
-			UART_Print("\r\n[PWM] Outputs ENABLED\r\n");
-			break;
-
-		case 'd': case 'D':
-			PCA9685_EnableOutputs(0);     // Pull PB7 HIGH
-			UART_Print("\r\n[PWM] Outputs DISABLED\r\n");
-			break;
-
-		case 't': case 'T': // broad test to see if all of them work, without having to make separate cases for every single channel
-			for(uint8_t i = 0; i < 16; ++i) PCA9685_SetDutyCycle(i, 25);
-			UART_Print("\r\n[PWM] All 16 channels set to 25% Duty Cycle.\r\n");
-			break;
-
-		case 'y': case 'Y':
-			// same as above pretty much
-			for(uint8_t i = 0; i < 16; ++i) PCA9685_SetDutyCycle(i, 75);
-			UART_Print("\r\n[PWM] All 16 channels set to 75% Duty Cycle.\r\n");
-			break;
-
-		  default:
-			break;
-	  }
-
+	  char cmd = key_pressed;
 	  key_pressed = 0;
+
+	  char msg_buffer[64];
+
+	  // only looking for LED0-7 is entirely arbitrary. I didn't wanna use Hex for selections, so I needed to cut it off somewhere to not have to code 2-character selections. Cutting it at half just made sense
+	  if (cmd >= '0' && cmd <= '7') {
+		  selected_led = cmd - '0';
+		  sprintf(msg_buffer, "\r\n[SELECT] LED %d selected.\r\n", selected_led);
+		  UART_Print(msg_buffer);
+
+	  } else if (cmd == ' ') { // ALL LEDs
+          selected_led = 255;
+          UART_Print("\r\n[SELECT] ALL LEDs selected.\r\n");
+
+      } else if (cmd == '+' || cmd == '=') { // Increase Duty. '+' in case ALT or Shift is also pressed down
+          if (selected_led == 255) {
+              for(uint8_t i = 0; i < 16; i++) {
+                  if (led_duty[i] <= (100 - duty_step)) led_duty[i] += duty_step;
+                  else led_duty[i] = 100; // Cap at 100%
+                  PCA9685_SetDutyCycle(i, led_duty[i]);
+              }
+              UART_Print("\r\n[DUTY] ALL LEDs increased.\r\n");
+
+          } else {
+              // Just the selected LED
+              if (led_duty[selected_led] <= (100 - duty_step)) led_duty[selected_led] += duty_step;
+              else led_duty[selected_led] = 100;
+              PCA9685_SetDutyCycle(selected_led, led_duty[selected_led]);
+
+              sprintf(msg_buffer, "\r\n[DUTY] LED %d is now %d%%\r\n", selected_led, led_duty[selected_led]);
+              UART_Print(msg_buffer);
+          }
+
+      } else if (cmd == '-' || cmd == '_') { // Decrease Duty. '_' same as '+' above
+          if (selected_led == 255) {
+              for(uint8_t i = 0; i < 16; i++) {
+                  if (led_duty[i] >= duty_step) led_duty[i] -= duty_step;
+                  else led_duty[i] = 0; // Floor at 0%
+                  PCA9685_SetDutyCycle(i, led_duty[i]);
+              }
+              UART_Print("\r\n[DUTY] ALL LEDs decreased.\r\n");
+          } else {
+              if (led_duty[selected_led] >= duty_step) led_duty[selected_led] -= duty_step;
+              else led_duty[selected_led] = 0;
+              PCA9685_SetDutyCycle(selected_led, led_duty[selected_led]);
+
+              sprintf(msg_buffer, "\r\n[DUTY] LED %d is now %d%%\r\n", selected_led, led_duty[selected_led]);
+              UART_Print(msg_buffer);
+          }
+
+      } else if (cmd == 'e' || cmd == 'E') { // Enable all
+          PCA9685_EnableOutputs(1);
+          UART_Print("\r\n[PWR] Outputs ENABLED.\r\n");
+
+      } else if (cmd == 'd' || cmd == 'D') { // Disable all
+          PCA9685_EnableOutputs(0);
+          UART_Print("\r\n[PWR] Outputs DISABLED.\r\n");
+
+      } else if (cmd == 'f' || cmd == 'F') { // Frequency increase
+          current_frequency += freq_step;
+          if (current_frequency > 1500.0f) current_frequency = 1500.0f; // Cap at what seems to be hardware max
+          PCA9685_SetFrequency(current_frequency);
+          sprintf(msg_buffer, "\r\n[FREQ] Increased to %d Hz.\r\n", (int)current_frequency);
+          UART_Print(msg_buffer);
+
+      } else if (cmd == 'g' || cmd == 'G') { // Frequency decrease
+          current_frequency -= freq_step;
+          if (current_frequency < 24.0f) current_frequency = 24.0f; // Cap at hardware min
+          PCA9685_SetFrequency(current_frequency);
+          sprintf(msg_buffer, "\r\n[FREQ] Decreased to %d Hz.\r\n", (int)current_frequency);
+          UART_Print(msg_buffer);
+      }
+
+	  // this is kind of like a Command Queue pattern, just without the queue part
+
 
     /* USER CODE END WHILE */
 
