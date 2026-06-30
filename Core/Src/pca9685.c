@@ -70,10 +70,32 @@ void PCA9685_SetFrequency(float frequency) {
 
 
 void PCA9685_SetDutyCycle(uint8_t channel, uint8_t percentage) {
+	// constraints just in case. Maybe it would make more sense for this to throw an error or something
+	if (percentage > 100) percentage = 100;
+	if (percentage < 0) percentage = 0;
+	if (channel > 15) channel = 15;
+	if (channel < 0) channel = 0;
 
+	uint8_t on_value = 0;
+	uint16_t off_value = (uint16_t)(percentage / 100.0f * 4095 + 0.5f);
+
+	// I2C can only send 8 bits at a time, so we split the value into two
+	uint8_t off_high_value = off_value >> 8;
+	uint8_t off_low_value = off_value & 0xFF;
+
+	// calculate the address of the LED we actually want to send the values to
+	uint16_t target_address = PCA9685_LED0_ON_L + (channel * 4);
+
+	// only works because Auto Increment is turned ON in Init
+	uint8_t data_to_send[4] = {on_value, on_value, off_low_value, off_high_value};
+	HAL_I2C_Mem_Write(pca_i2c, PCA9685_ADDRESS, target_address, 1, data_to_send, 4, HAL_MAX_DELAY);
 }
 
 
 void PCA9685_EnableOutputs(uint8_t enable) {
-
+	if (enable) {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+	} else {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	}
 }
