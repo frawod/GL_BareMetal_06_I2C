@@ -307,6 +307,47 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				UART_Print("\r\n[I2C] Sent SetFrequency(1000) command.\r\n");
 				break;
 
+        	case '1':
+				PCA9685_SetDutyCycle(0, 10); // Channel 0, 10% brightness
+				UART_Print("\r\n[LED 0] Duty Cycle: 10%\r\n");
+				break;
+
+			case '2':
+				PCA9685_SetDutyCycle(0, 50); // Channel 0, 50% brightness
+				UART_Print("\r\n[LED 0] Duty Cycle: 50%\r\n");
+				break;
+
+			case '3':
+				PCA9685_SetDutyCycle(0, 100); // Channel 0, 100% brightness
+				UART_Print("\r\n[LED 0] Duty Cycle: 100%\r\n");
+				break;
+
+			case '0':
+				PCA9685_SetDutyCycle(0, 0);   // Channel 0, OFF
+				UART_Print("\r\n[LED 0] Duty Cycle: 0%\r\n");
+				break;
+
+			case 'e': case 'E':
+				PCA9685_EnableOutputs(1);     // Pull PB7 LOW
+				UART_Print("\r\n[PWM] Outputs ENABLED\r\n");
+				break;
+
+			case 'd': case 'D':
+				PCA9685_EnableOutputs(0);     // Pull PB7 HIGH
+				UART_Print("\r\n[PWM] Outputs DISABLED\r\n");
+				break;
+
+			case 't': case 'T': // broad test to see if all of them work, without having to make separate cases for every single channel
+				for(uint8_t i = 0; i < 16; ++i) PCA9685_SetDutyCycle(i, 25);
+				UART_Print("\r\n[PWM] All 16 channels set to 25% Duty Cycle.\r\n");
+				break;
+
+			case 'y': case 'Y':
+				// same as above pretty much
+				for(uint8_t i = 0; i < 16; ++i) PCA9685_SetDutyCycle(i, 75);
+				UART_Print("\r\n[PWM] All 16 channels set to 75% Duty Cycle.\r\n");
+				break;
+
             default:
             	break;
         }
